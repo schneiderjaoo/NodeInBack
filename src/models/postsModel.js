@@ -9,6 +9,13 @@ export async function getAllPosts() {
     return colecao.find().toArray();
 }
 
+export async function getPostById(id) {
+ const db = conexao.db("imersao");
+    const colecao = db.collection("posts");
+    const objectId = ObjectId.createFromHexString(id);
+    return colecao.findOne({ _id: new ObjectId(objectId) });
+}
+
 export async function createNewPost(newPost) {
     const db = conexao.db("imersao");
     const colecao = db.collection("posts");

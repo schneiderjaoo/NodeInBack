@@ -1,4 +1,4 @@
-import { getAllPosts, createNewPost, atualizarPost, deletarPost } from "../models/postsModel.js";
+import { getAllPosts, createNewPost, atualizarPost, deletarPost, getPostById } from "../models/postsModel.js";
 import fs from "fs";
 import gerarDescricaoComGemini from "../service/serviceGemini.js";
 
@@ -10,6 +10,16 @@ export async function listarPosts(req, res) {
         console.error("Erro ao listar posts:", erro.message);
         res.status(500).json({ "Erro": "Erro ao listar posts" });
     }
+}
+
+export async function getPost(req, res) {
+  try {
+    const post = await getPostById(req.params.id);
+    res.status(200).json(post);
+  } catch (error) {
+    console.error("Erro ao listar post:", erro.message);
+    res.status(500).json({ "Erro": "Erro ao listar post" });
+  }
 }
 
 export async function criarPost(req, res) {
