@@ -3,63 +3,73 @@ import fs from "fs";
 import gerarDescricaoComGemini from "../service/serviceGemini.js";
 
 export async function listarPosts(req, res) {
-    const get = await getAllPosts();
-  res.status(200).json(get);
+    try {
+        const posts = await getAllPosts();
+        res.status(200).json(posts);
+    } catch (erro) {
+        console.error("Erro ao listar posts:", erro.message);
+        res.status(500).json({ "Erro": "Erro ao listar posts" });
+    }
 }
 
 export async function criarPost(req, res) {
-  const newPost = req.body;
-  try {
-      const post = await createNewPost(newPost);
-      res.status(200).json(post);
-  } catch (erro) {
-      console.error("Erro ao criar post:", erro.message);
-      res.status(500).json({ "Erro": "Erro ao criar post" });
-  }
+    const newPost = req.body;
+
+    try {
+        const post = await createNewPost(newPost);
+        res.status(201).json(post);
+    } catch (erro) {
+        console.error("Erro ao criar post:", erro.message);
+        res.status(500).json({ "Erro": "Erro ao criar post" });
+    }
 }
 
 export async function uploadImg(req, res) {
-  const newPost = {
-    descricao: "",
-    img: req.file.originalname,
-    alt: ""
-  }
+    const tempPath = req.file.path;
+    const imgId = new Date().getTime();
+    const finalPath = `uploads/${imgId}.png`;
 
-  try {
-      const post = await createNewPost(newPost);
-      const imgAtualizada = `uploads/${post.insertedId}.png`
-      fs.renameSync(req.file.path, imgAtualizada);
-      res.status(200).json(post);
-  } catch (erro) {
-      console.error("Erro ao criar post:", erro.message);
-      res.status(500).json({ "Erro": "Erro ao criar post de imagem" });
-  }
+    try {
+        fs.renameSync(tempPath, finalPath);
+
+        const imgBuffer = fs.readFileSync(finalPath);
+        const descricao = await gerarDescricaoComGemini(imgBuffer);
+
+        const newPost = {
+            descricao: descricao,
+            img: `${imgId}.png`,
+            alt: ""
+        };
+
+        const post = await createNewPost(newPost);
+
+        res.status(201).json(post);
+    } catch (erro) {
+        console.error("Erro ao fazer upload da imagem:", erro.message);
+        res.status(500).json({ "Erro": "Erro ao fazer upload da imagem" });
+    }
 }
 
 export async function atualizarNovoPost(req, res) {
-  const id = req.params.id;
-  const urlImagem = `http://localhost:3000/uploads/${id}.png`;
+    const id = req.params.id;
+    const urlImagem = `http://localhost:3000/uploads/${id}.png`;
 
-  try {
-      const imgBuffer = fs.readFileSync(`./uploads/${id}.png`);
-      const descricao = await gerarDescricaoComGemini(imgBuffer);
+    try {
+        const post = {
+            imgUrl: urlImagem,
+            descImg: req.body.alt || ""
+        };
 
-      const post = {
-          imgUrl: urlImagem,
-          descricao: descricao,
-          descImg: req.body.alt
-      }
-
-      const postNovo = await atualizarPost(id, post);
-      res.status(200).json(postNovo);
-  } catch (erro) {
-      console.error("Erro ao atualizar post:", erro.message);
-      res.status(500).json({ "Erro": "Erro ao atualizar o post" });
-  }
+        const postAtualizado = await atualizarPost(id, post);
+        res.status(200).json(postAtualizado);
+    } catch (erro) {
+        console.error("Erro ao atualizar post:", erro.message);
+        res.status(500).json({ "Erro": "Erro ao atualizar o post" });
+    }
 }
 
 export async function deletPost(req, res) {
-  const id = req.params.id;
+    const id = req.params.id;
 
     try {
         const resultado = await deletarPost(id);
@@ -67,7 +77,7 @@ export async function deletPost(req, res) {
         if (resultado.deletedCount === 0) {
             return res.status(404).json({ "Erro": "Post não encontrado" });
         }
-        
+
         res.status(200).json({ "Mensagem": "Post deletado com sucesso" });
     } catch (erro) {
         console.error("Erro ao deletar post:", erro.message);
